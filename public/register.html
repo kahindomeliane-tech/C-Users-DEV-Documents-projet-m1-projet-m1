@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inscription</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="auth-box">
+
+    <h2>Inscription</h2>
+
+    <input type="text" id="username" placeholder="Nom">
+
+    <input type="password" id="password" placeholder="Mot de passe">
+
+    <button onclick="register()">Créer compte</button>
+
+</div>
+
+<script>
+
+async function register(){
+
+    const username = document.getElementById("username").value;
+
+    const password = document.getElementById("password").value;
+
+    const response = await fetch("/register", {
+
+        method:"POST",
+
+        headers:{
+            "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+            username,
+            password
+        })
+    });
+
+    const result = await response.json();
+
+    if(result.success){
+
+        alert("Compte créé");
+
+        window.location = "login.html";
+
+    }else{
+
+        alert(result.message);
+    }
+}
+
+</script>
+
+</body>
+</html>

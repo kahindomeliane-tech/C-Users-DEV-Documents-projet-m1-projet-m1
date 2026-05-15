@@ -1,0 +1,141 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b141a;
+    color: rgb(19, 19, 19);
+}
+
+.chat-container {
+    width: 450px;
+    margin: 20px auto;
+    height: 90vh;
+    background: #111b21;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Barre du haut */
+.topbar {
+    background: #202c33;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.topbar button {
+    background: #00a884;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: rgb(115, 90, 90);
+    cursor: pointer;
+}
+.topbar button:hover {
+    background: #007f67;
+}
+
+/* Zone des messages */
+#messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.message {
+    background: #005c4b;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 10px;
+    word-wrap: break-word;
+}
+
+.system {
+    text-align: center;
+    color: gray;
+    font-style: italic;
+}
+
+/* Zone du bas */
+.bottom {
+    background: #202c33;
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.bottom {
+    background: #0a3337;       /* fond sombre neutre */
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.bottom input,
+.bottom select {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 20px;       /* arrondi façon WhatsApp */
+    background: #ededed;       /* gris clair, plus doux */
+    color: #111;               /* texte foncé pour contraste */
+    font-size: 14px;
+}
+
+.bottom input::placeholder {
+    color: #666;               /* placeholder gris moyen */
+}
+
+.bottom button {
+    flex: 0 0 auto;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 20px;
+    background: #00a884;       /* bouton vert WhatsApp */
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.bottom button:hover {
+    background: #007f67;
+}
+
+
+.bottom button:hover {
+    background: #b0e3da;
+}
+
+
+.bottom button {
+    flex: 0 0 auto;
+    padding: 10px 15px;
+    border: none;
+    background: #00a884;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.bottom button:hover {
+    background: #007f67;
+}
+
+/* Barre d'émojis */
+.emoji-bar {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    background: #202c33;
+    border-top: 1px solid #333;
+}
+.emoji-bar button {
+    font-size: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+.emoji-bar button:hover {
+    transform: scale(1.2);
+}

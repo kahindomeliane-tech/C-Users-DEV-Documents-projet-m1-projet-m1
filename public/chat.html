@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="chat-container">
+
+    <!-- Barre du haut -->
+    <div class="topbar">
+        <span>💬 Mini WhatsApp</span>
+        <button onclick="logout()">Déconnexion</button>
+    </div>
+
+    <!-- Zone des messages -->
+    <div id="messages"></div>
+
+    <!-- Zone du bas -->
+    <div class="bottom">
+        <input type="text" id="username" placeholder="Votre nom">
+        <select id="group">
+            <option value="Groupe1">Groupe 1</option>
+            <option value="Groupe2">Groupe 2</option>
+            <option value="Groupe3">Groupe 3</option>
+            <option value="Groupe4">Groupe 4</option>
+            <option value="Groupe5">Groupe 5</option>
+        </select>
+        <input type="text" id="messageInput" placeholder="Message">
+        <button onclick="sendMessage()">Envoyer</button>
+        <input type="file" id="fileInput">
+        <button onclick="uploadFile()">Partager fichier</button>
+    </div>
+
+    <!-- Barre d'émojis -->
+    <div class="emoji-bar">
+        <button onclick="addEmoji('😂')">😂</button>
+        <button onclick="addEmoji('❤️')">❤️</button>
+        <button onclick="addEmoji('👍')">👍</button>
+        <button onclick="addEmoji('🔥')">🔥</button>
+        <button onclick="addEmoji('🎉')">🎉</button>
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

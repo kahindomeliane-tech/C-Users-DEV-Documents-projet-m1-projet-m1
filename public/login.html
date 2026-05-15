@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion - Mini Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="auth-box">
+    <h2>🔑 Connexion</h2>
+
+    <input type="text" id="username" placeholder="Nom d'utilisateur">
+    <input type="password" id="password" placeholder="Mot de passe">
+
+    <button onclick="login()">Se connecter</button>
+
+    <p>
+        Pas de compte ?
+        <a href="register.html">Inscription</a>
+    </p>
+</div>
+
+<script>
+async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (!username || !password) {
+        alert("Veuillez remplir tous les champs.");
+        return;
+    }
+
+    const response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        localStorage.setItem("username", username);
+        window.location = "chat.html";
+    } else {
+        alert(result.message || "Identifiants incorrects");
+    }
+}
+</script>
+
+</body>
+</html>
