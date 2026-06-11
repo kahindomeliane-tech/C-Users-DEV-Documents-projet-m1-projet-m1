@@ -32,30 +32,80 @@ function joinGroup() {
     socket.emit("joinGroup", { username, group });
 }
 
-// --- Envoi de message ---
-function sendMessage() {
-    const input = document.getElementById("messageInput");
-    const message = input.value;
-    const group = document.getElementById("group").value;
+// --- Génération de clé AES à partir du PIN ---
+async function getKeyFromPin(pin) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(pin),
+        { name: "PBKDF2" },
+        false,
+        ["deriveKey"]
+    );
 
-    if (message.trim() !== "") {
-        socket.emit("chat message", { group, message, pin: userPin });
-        input.value = "";
-    }
+    return crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: enc.encode("chat-salt"),
+            iterations: 100000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-CBC", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
 }
 
-// --- Réception des messages (avec déchiffrement simulé) ---
-function receiveMessage(encryptedMessage, ivHex, pin) {
+// --- Chiffrement ---
+async function encryptMessage(message, pin) {
+    const key = await getKeyFromPin(pin);
+    const iv = crypto.getRandomValues(new Uint8Array(16));
+    const enc = new TextEncoder();
+    const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-CBC", iv },
+        key,
+        enc.encode(message)
+    );
+    return {
+        encrypted: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+        iv: btoa(String.fromCharCode(...iv))
+    };
+}
+
+// --- Déchiffrement ---
+async function decryptMessage(encryptedBase64, ivBase64, pin) {
     try {
-        // ⚠️ Simulation : dans un vrai projet, utiliser Web Crypto API avec la clé partagée
-        return `[Message chiffré reçu] ${encryptedMessage}`;
+        const key = await getKeyFromPin(pin);
+        const encryptedBytes = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+        const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-CBC", iv },
+            key,
+            encryptedBytes
+        );
+        return new TextDecoder().decode(decrypted);
     } catch {
         return "Erreur de déchiffrement";
     }
 }
 
-socket.on("chat message", (data) => {
-    const decrypted = receiveMessage(data.text, data.iv, userPin);
+// --- Envoi de message ---
+async function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const message = input.value;
+    const group = document.getElementById("group").value;
+
+    if (message.trim() !== "") {
+        const { encrypted, iv } = await encryptMessage(message, userPin);
+        socket.emit("chat message", { group, encrypted, iv });
+        input.value = "";
+    }
+}
+
+// --- Réception des messages ---
+socket.on("chat message", async (data) => {
+    const decrypted = await decryptMessage(data.encrypted, data.iv, userPin);
     addMessage(`<strong>${data.user}</strong><br>${decrypted}`);
 });
 
@@ -90,11 +140,12 @@ async function uploadFile() {
                 ? '🏆 Premier partage !'
                 : `🔁 Premier partagé par : ${result.firstUploader}`;
 
-            socket.emit("chat message", {
-                group,
-                message: `📁 Fichier partagé : ${result.fileName}<br>${firstNote}`,
-                pin: userPin
-            });
+            const { encrypted, iv } = await encryptMessage(
+                `📁 Fichier partagé : ${result.fileName}<br>${firstNote}`,
+                userPin
+            );
+
+            socket.emit("chat message", { group, encrypted, iv });
         } else {
             alert("Erreur lors de l'envoi du fichier.");
         }

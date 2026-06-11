@@ -4,13 +4,13 @@ const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
 const path = require("path");
-const crypto = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
+
 // Rediriger la racine vers la page de connexion pour forcer l'authentification
 app.get("/", (req, res) => {
     res.redirect("/login.html");
@@ -18,6 +18,8 @@ app.get("/", (req, res) => {
 app.get("/index.html", (req, res) => {
     res.redirect("/login.html");
 });
+
+// Servir les fichiers statiques (HTML, CSS, JS)
 app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
@@ -59,31 +61,6 @@ app.post("/upload", upload.single("file"), (req, res) => {
     });
 });
 
-// --- Chiffrement AES-256 ---
-const ENCRYPTION_KEY = crypto.randomBytes(32); // ⚠️ à mettre dans .env
-function encryptMessage(message, pin) {
-    const iv = crypto.randomBytes(16); // IV unique par message
-    const securedMessage = `${pin}:${message}`;
-    const cipher = crypto.createCipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(securedMessage, "utf8", "hex");
-    encrypted += cipher.final("hex");
-    return { encrypted, iv: iv.toString("hex") };
-}
-
-function decryptMessage(encryptedMessage, ivHex, pin) {
-    try {
-        const iv = Buffer.from(ivHex, "hex");
-        const decipher = crypto.createDecipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedMessage, "hex", "utf8");
-        decrypted += decipher.final("utf8");
-
-        const [storedPin, originalMessage] = decrypted.split(":", 2);
-        return storedPin === pin ? originalMessage : "PIN incorrect";
-    } catch {
-        return "Erreur de déchiffrement";
-    }
-}
-
 // --- Chat avec 5 groupes ---
 io.on("connection", (socket) => {
     socket.on("joinGroup", ({ username, group }) => {
@@ -93,9 +70,9 @@ io.on("connection", (socket) => {
         io.to(group).emit("system", `${username} a rejoint ${group}`);
     });
 
-    socket.on("chat message", ({ group, message, pin }) => {
-        const { encrypted, iv } = encryptMessage(message, pin);
-        io.to(group).emit("chat message", { user: socket.username, text: encrypted, iv });
+    // ⚠️ Le serveur ne chiffre pas, il relaie simplement
+    socket.on("chat message", ({ group, encrypted, iv }) => {
+        io.to(group).emit("chat message", { user: socket.username, encrypted, iv });
     });
 
     socket.on("disconnect", () => {
@@ -121,7 +98,6 @@ function listenWithRetry(startPort, maxAttempts = 5) {
                 console.warn(`Port ${port} occupé, tentative sur ${port + 1}...`);
                 attempts++;
                 port++;
-                // remove previous listener to avoid multiple handlers
                 server.removeAllListeners('error');
                 tryListen();
             } else {
