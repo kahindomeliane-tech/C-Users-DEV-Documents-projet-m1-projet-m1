@@ -106,7 +106,12 @@ async function sendMessage() {
 // --- Réception des messages ---
 socket.on("chat message", async (data) => {
     const decrypted = await decryptMessage(data.encrypted, data.iv, userPin);
-    addMessage(`<strong>${data.user}</strong><br>${decrypted}`);
+    if (decrypted === "Erreur de déchiffrement") {
+        // Afficher l'information et proposer le texte chiffré
+        addMessage(`<strong>${data.user}</strong><br><em>Message chiffré (impossible de déchiffrer avec votre PIN)</em><br><small>${data.encrypted}</small>`, "message");
+    } else {
+        addMessage(`<strong>${data.user}</strong><br>${decrypted}`);
+    }
 });
 
 socket.on("system", (msg) => {
@@ -170,5 +175,6 @@ function logout() {
 }
 
 // --- Connexion automatique au groupe choisi ---
-joinGroup();
+// Demander le PIN d'abord pour s'assurer que le chiffrement/déchiffrement fonctionne
 setPin();
+joinGroup();
