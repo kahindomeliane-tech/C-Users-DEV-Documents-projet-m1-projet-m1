@@ -19,6 +19,13 @@ function addMessage(html, className = "message") {
     messages.scrollTop = messages.scrollHeight;
 }
 
+// --- PIN utilisateur ---
+let userPin = "";
+function setPin() {
+    userPin = localStorage.getItem("pin") || prompt("Entrez votre PIN de sécurité :");
+    localStorage.setItem("pin", userPin);
+}
+
 // --- Gestion des groupes ---
 function joinGroup() {
     const group = document.getElementById("group").value;
@@ -32,14 +39,24 @@ function sendMessage() {
     const group = document.getElementById("group").value;
 
     if (message.trim() !== "") {
-        socket.emit("chat message", { group, message });
+        socket.emit("chat message", { group, message, pin: userPin });
         input.value = "";
     }
 }
 
-// --- Réception des messages ---
+// --- Réception des messages (avec déchiffrement simulé) ---
+function receiveMessage(encryptedMessage, ivHex, pin) {
+    try {
+        // ⚠️ Simulation : dans un vrai projet, utiliser Web Crypto API avec la clé partagée
+        return `[Message chiffré reçu] ${encryptedMessage}`;
+    } catch {
+        return "Erreur de déchiffrement";
+    }
+}
+
 socket.on("chat message", (data) => {
-    addMessage(`<strong>${data.user}</strong><br>${data.text}`);
+    const decrypted = receiveMessage(data.text, data.iv, userPin);
+    addMessage(`<strong>${data.user}</strong><br>${decrypted}`);
 });
 
 socket.on("system", (msg) => {
@@ -49,23 +66,42 @@ socket.on("system", (msg) => {
 // --- Upload de fichier ---
 async function uploadFile() {
     const file = document.getElementById("fileInput").files[0];
-    if (!file) return;
+    const group = document.getElementById("group").value;
+
+    if (!file) {
+        alert("Veuillez sélectionner un fichier.");
+        return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("username", username);
 
-    const response = await fetch("/upload", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
 
-    const result = await response.json();
+        const result = await response.json();
 
-    socket.emit("chat message", {
-        user: username,
-        text: `📁 ${result.fileName}<br>🏆 Premier partage : ${result.firstUploader}`
-    });
+        if (result.success) {
+            const firstNote = result.firstUploader === username
+                ? '🏆 Premier partage !'
+                : `🔁 Premier partagé par : ${result.firstUploader}`;
+
+            socket.emit("chat message", {
+                group,
+                message: `📁 Fichier partagé : ${result.fileName}<br>${firstNote}`,
+                pin: userPin
+            });
+        } else {
+            alert("Erreur lors de l'envoi du fichier.");
+        }
+    } catch (err) {
+        console.error("Erreur upload:", err);
+        alert("Impossible d'envoyer le fichier.");
+    }
 }
 
 // --- Ajout d'émojis ---
@@ -78,8 +114,10 @@ function addEmoji(emoji) {
 // --- Déconnexion ---
 function logout() {
     localStorage.removeItem("username");
+    localStorage.removeItem("pin");
     window.location = "login.html";
 }
 
 // --- Connexion automatique au groupe choisi ---
 joinGroup();
+setPin();

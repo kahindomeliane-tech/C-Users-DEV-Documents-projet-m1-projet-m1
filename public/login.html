@@ -2,16 +2,18 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - Mini Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="auth-page">
 
 <div class="auth-box">
     <h2>🔑 Connexion</h2>
 
     <input type="text" id="username" placeholder="Nom d'utilisateur">
     <input type="password" id="password" placeholder="Mot de passe">
+    <input type="text" id="pin" placeholder="PIN de sécurité">
 
     <button onclick="login()">Se connecter</button>
 
@@ -25,9 +27,10 @@
 async function login() {
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
+    const pin = document.getElementById("pin").value.trim();
 
-    if (!username || !password) {
-        alert("Veuillez remplir tous les champs.");
+    if (!username || !password || !pin) {
+        alert("Veuillez remplir tous les champs (nom, mot de passe et PIN).");
         return;
     }
 
@@ -40,7 +43,10 @@ async function login() {
     const result = await response.json();
 
     if (result.success) {
+        // Stockage du username et du PIN
         localStorage.setItem("username", username);
+        localStorage.setItem("pin", pin);
+
         window.location = "chat.html";
     } else {
         alert(result.message || "Identifiants incorrects");

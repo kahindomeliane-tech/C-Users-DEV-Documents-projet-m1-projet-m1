@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Chat</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -11,13 +12,13 @@
             margin: 40px auto;
             border: 1px solid #0c556d;
             border-radius: 8px;
-            background: #f8ebeb;
+            background: #191717;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             overflow: hidden;
         }
         .header {
             background: #555d6a;
-            color: #f3ebeb;
+            color: #e9d9d9;
             padding: 15px;
             font-size: 20px;
             display: flex;
@@ -25,7 +26,7 @@
             align-items: center;
         }
         .header button {
-            background: #00a884;
+            background: #4d867a;
             border: none;
             padding: 8px 12px;
             border-radius: 6px;
@@ -34,6 +35,17 @@
         }
         .header button:hover {
             background: #007f67;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         #messages {
             height: 300px;
@@ -80,17 +92,24 @@
     <div id="messages"></div>
 
     <div class="bottom">
+        <label for="username" class="visually-hidden">Votre nom</label>
         <input type="text" id="username" class="form-control" placeholder="Votre nom">
-        <select id="group" class="form-select">
+
+        <label for="group" class="visually-hidden">Choisir un groupe</label>
+        <select id="group" class="form-select" aria-label="Choisir un groupe">
             <option value="Groupe1">Groupe 1</option>
             <option value="Groupe2">Groupe 2</option>
             <option value="Groupe3">Groupe 3</option>
             <option value="Groupe4">Groupe 4</option>
             <option value="Groupe5">Groupe 5</option>
         </select>
+
+        <label for="messageInput" class="visually-hidden">Message</label>
         <input type="text" id="messageInput" class="form-control" placeholder="Message">
         <button class="btn btn-success" onclick="sendMessage()">Envoyer</button>
-        <input type="file" id="fileInput" class="form-control">
+
+        <label for="fileInput" class="visually-hidden">Sélectionner un fichier</label>
+        <input type="file" id="fileInput" class="form-control" aria-label="Sélectionner un fichier">
         <button class="btn btn-warning" onclick="uploadFile()">Partager fichier</button>
     </div>
 
