@@ -24,15 +24,28 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-let users = [];
+const DEFAULT_ADMIN = { username: "admin", password: "admin123", isAdmin: true };
+let users = [DEFAULT_ADMIN];
 let filesDB = {};
+let adminSockets = new Set();
+let allMessages = [];
 
 // --- Authentification ---
 app.post("/register", (req, res) => {
     const { username, password } = req.body;
+    if (!username || !password) {
+        return res.json({ success: false, message: "Nom et mot de passe requis" });
+    }
+    if (username.toLowerCase() === "admin") {
+        return res.json({ success: false, message: "Nom réservé, choisissez un autre nom" });
+    }
     const exist = users.find(u => u.username === username);
     if (exist) {
         return res.json({ success: false, message: "Utilisateur existe déjà" });
+    }
+    const passwordTaken = users.find(u => u.password === password);
+    if (passwordTaken) {
+        return res.json({ success: false, message: "Ce mot de passe est déjà utilisé. Choisissez un mot de passe unique." });
     }
     users.push({ username, password });
     res.json({ success: true });
@@ -44,7 +57,8 @@ app.post("/login", (req, res) => {
     if (!user) {
         return res.json({ success: false, message: "Identifiants incorrects" });
     }
-    res.json({ success: true, username });
+    const role = user.isAdmin ? "admin" : "user";
+    res.json({ success: true, username, role });
 });
 
 // --- Upload ---
@@ -67,17 +81,72 @@ io.on("connection", (socket) => {
         socket.username = username;
         socket.group = group;
         socket.join(group);
-        io.to(group).emit("system", `${username} a rejoint ${group}`);
+        const systemMessage = `${username} a rejoint ${group}`;
+        io.to(group).emit("system", systemMessage);
+        adminSockets.forEach(adminSocket => adminSocket.emit("admin system", systemMessage));
+    });
+
+    socket.on("joinAdmin", ({ username, role } = {}) => {
+        if (!username || username.toLowerCase() !== 'admin' || role !== 'admin') {
+            socket.emit('admin denied', 'Accès administrateur refusé');
+            return;
+        }
+
+        socket.username = 'admin';
+        socket.isAdmin = true;
+        adminSockets.add(socket);
+        socket.join('admin');
+        socket.emit("admin history", allMessages);
+        socket.emit('admin ok', 'Accès admin autorisé');
+    });
+
+    // Admin actions
+    socket.on('admin delete user', (targetUsername) => {
+        if (!socket.isAdmin) return socket.emit('admin denied', 'Action non autorisée');
+        if (!targetUsername) return;
+        // remove from users DB
+        users = users.filter(u => u.username !== targetUsername && u.username !== undefined);
+
+        // disconnect any sockets with that username
+        for (const [id, s] of io.of('/').sockets) {
+            try {
+                if (s.username && s.username === targetUsername) {
+                    s.emit('system', `Vous avez été supprimé par l'administrateur.`);
+                    s.disconnect(true);
+                }
+            } catch (err) { /* ignore */ }
+        }
+
+        const sys = `Administrateur a supprimé l'utilisateur ${targetUsername}`;
+        io.emit('system', sys);
+        adminSockets.forEach(as => as.emit('admin system', sys));
     });
 
     // ⚠️ Le serveur ne chiffre pas, il relaie simplement
-    socket.on("chat message", ({ group, encrypted, iv }) => {
+    socket.on("chat message", ({ group, encrypted, iv, plain }) => {
+        const chatPayload = {
+            user: socket.username || "Invité",
+            group,
+            encrypted,
+            iv,
+            plain: plain || "(message non disponible)",
+            timestamp: new Date().toISOString()
+        };
+
+        allMessages.push(chatPayload);
         io.to(group).emit("chat message", { user: socket.username, encrypted, iv });
+        adminSockets.forEach(adminSocket => adminSocket.emit("admin message", chatPayload));
     });
 
     socket.on("disconnect", () => {
+        if (socket.isAdmin) {
+            adminSockets.delete(socket);
+        }
+
         if (socket.username && socket.group) {
-            io.to(socket.group).emit("system", `${socket.username} a quitté ${socket.group}`);
+            const message = `${socket.username} a quitté ${socket.group}`;
+            io.to(socket.group).emit("system", message);
+            adminSockets.forEach(adminSocket => adminSocket.emit("admin system", message));
         }
     });
 });

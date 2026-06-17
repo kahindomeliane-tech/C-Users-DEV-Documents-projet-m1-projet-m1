@@ -185,3 +185,37 @@ body {
     .chat-container{ width: 100%; margin: 0; height: 100vh; border-radius: 0; }
     .auth-box{ padding: 18px; }
 }
+
+/* Admin page styles */
+.admin-wrap{
+    max-width:1100px;
+    margin:28px auto;
+    background: linear-gradient(180deg,#ffffff 0%, #f3f7fb 100%);
+    border-radius:12px;
+    box-shadow: 0 12px 40px rgba(2,12,22,0.25);
+    overflow:hidden;
+}
+.admin-top{
+    display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(90deg,#0f1724,#07263a);color:#fff;
+}
+.admin-top h2{ margin:0;font-size:1.25rem;letter-spacing:0.3px }
+.admin-controls{ display:flex; gap:12px; align-items:center }
+.admin-search{ padding:8px 12px;border-radius:10px;border:none;min-width:260px }
+.admin-filter{ padding:8px 12px;border-radius:10px;border:none;background:#0b3042;color:#fff }
+.admin-messages{ padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; background:linear-gradient(180deg,#f6fbfd,#eef6fa); }
+.admin-msg{ background: #fff; border-radius:10px; padding:14px; box-shadow: 0 6px 18px rgba(11,22,33,0.06); border:1px solid rgba(10,20,30,0.03); }
+.admin-meta{ display:flex; align-items:center; gap:10px; margin-bottom:8px }
+.avatar{ width:40px;height:40px;border-radius:50%;background:#00a884;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700 }
+.msg-user{ font-weight:700; color:#07263a }
+.msg-group{ font-size:0.9rem; color:#6b7b86; margin-left:6px }
+.msg-text{ margin:10px 0;color:#14202a }
+.msg-encrypted{ font-size:0.8rem;color:#68707a;background:#fbfdff;padding:8px;border-radius:6px;border:1px dashed #e6eef5;overflow-wrap:anywhere }
+.msg-time{ font-size:0.8rem;color:#8896a6 }
+.msg-actions{ display:flex; gap:8px; margin-top:10px }
+.btn-ghost{ background:transparent;border:1px solid #0b3042;color:#0b3042;padding:6px 10px;border-radius:8px;cursor:pointer }
+.btn-primary{ background:#006b5a;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer }
+
+@media (max-width:720px){
+    .admin-messages{ grid-template-columns: 1fr }
+    .admin-search{ min-width:140px }
+}

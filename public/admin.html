@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Admin - Mini Chat</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background:#f4f6f8; font-family: Arial, sans-serif; }
+        .wrap { max-width:900px; margin:30px auto; background:#fff; padding:16px; border-radius:8px; }
+        .header { display:flex; justify-content:space-between; align-items:center; }
+        .messages { margin-top:12px; max-height:600px; overflow:auto; background:#fafafa; padding:12px; border-radius:6px; }
+        .msg { padding:8px; border-bottom:1px solid #ececec; }
+        .meta { color:#666; font-size:0.9rem; }
+    </style>
+</head>
+<body>
+<div class="admin-wrap">
+    <div class="admin-top">
+        <h2>Admin — mini-²whatsapp messageries</h2>
+        <div class="admin-controls">
+            <input id="search" class="admin-search" placeholder="Rechercher par utilisateur, texte ou groupe...">
+            <select id="filterGroup" class="admin-filter">
+                <option value="">Tous les groupes</option>
+                <option value="Groupe1">Groupe1</option>
+                <option value="Groupe2">Groupe2</option>
+                <option value="Groupe3">Groupe3</option>
+                <option value="Groupe4">Groupe4</option>
+                <option value="Groupe5">Groupe5</option>
+            </select>
+            <button class="btn-ghost" onclick="logout()">Déconnexion</button>
+        </div>
+    </div>
+
+    <div id="messages" class="admin-messages"></div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const me = localStorage.getItem('username');
+
+function logout(){
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    window.location='login.html';
+}
+
+const role = localStorage.getItem('role');
+if (role !== 'admin') {
+    alert('Accès admin réservé au compte admin.');
+    window.location = 'login.html';
+}
+
+socket.on('connect', ()=>{
+    socket.emit('joinAdmin', { username: me, role });
+});
+
+socket.on('admin denied', (msg)=>{
+    alert(msg || 'Accès administrateur refusé');
+    window.location = 'login.html';
+});
+
+socket.on('admin ok', ()=>{
+    console.log('Accès admin autorisé');
+});
+
+function buildCard(m){
+    const el = document.createElement('div');
+    el.className = 'admin-msg';
+    el.innerHTML = `
+        <div class="admin-meta">
+            <div class="avatar">${(m.user||'?').charAt(0).toUpperCase()}</div>
+            <div>
+                <div class="msg-user">${m.user || 'Inconnu'} <span class="msg-group">${m.group || ''}</span></div>
+                <div class="msg-time">${new Date(m.timestamp).toLocaleString()}</div>
+            </div>
+        </div>
+        <div class="msg-text">${m.plain ? m.plain : '<em>(pas de texte)</em>'}</div>
+        <div class="msg-encrypted">${m.encrypted}</div>
+        <div class="msg-actions">
+            <button class="btn-primary" onclick="copyEncrypted(this)">Copier chiffré</button>
+            <button class="btn-ghost" onclick="saveLog(this)">Télécharger</button>
+            <button class="btn-ghost" onclick="adminDeleteUser('${m.user}')">Supprimer utilisateur</button>
+        </div>
+    `;
+    return el;
+}
+
+function addMessage(m){
+    const container = document.getElementById('messages');
+    container.prepend(buildCard(m));
+}
+
+socket.on('admin history', (history)=>{ history.slice(-200).forEach(addMessage); });
+socket.on('admin message', (m)=> addMessage(m));
+socket.on('admin system', (s)=>{ const el=document.createElement('div'); el.className='admin-msg'; el.innerHTML=`<em>${s}</em>`; document.getElementById('messages').prepend(el); });
+
+function copyEncrypted(btn){
+    const card = btn.closest('.admin-msg');
+    const txt = card.querySelector('.msg-encrypted').innerText;
+    navigator.clipboard.writeText(txt);
+    btn.innerText = 'Copié'; setTimeout(()=> btn.innerText='Copier chiffré',1200);
+}
+
+function saveLog(btn){
+    const card = btn.closest('.admin-msg');
+    const txt = card.querySelector('.msg-text').innerText + '\n\nChiffré:\n' + card.querySelector('.msg-encrypted').innerText;
+    const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'message.txt'; a.click(); URL.revokeObjectURL(url);
+}
+
+function adminDeleteUser(username){
+    if (!username) return alert('Nom utilisateur manquant');
+    if (!confirm(`Confirmer suppression de l'utilisateur ${username} ?`)) return;
+    socket.emit('admin delete user', username);
+}
+
+</script>
+</body>
+</html>

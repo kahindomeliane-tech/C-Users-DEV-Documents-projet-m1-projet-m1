@@ -13,7 +13,7 @@
 
     <input type="text" id="username" placeholder="Nom d'utilisateur">
     <input type="password" id="password" placeholder="Mot de passe">
-    <input type="text" id="pin" placeholder="PIN de sécurité">
+    <input type="password" id="pin" placeholder="PIN de sécurité">
 
     <button onclick="login()">Se connecter</button>
 
@@ -43,8 +43,9 @@ async function login() {
     const result = await response.json();
 
     if (result.success) {
-        // Stockage du username et du PIN
+        // Stockage du username, du rôle et du PIN
         localStorage.setItem("username", username);
+        localStorage.setItem("role", result.role || "user");
         localStorage.setItem("pin", pin);
 
         window.location = "chat.html";

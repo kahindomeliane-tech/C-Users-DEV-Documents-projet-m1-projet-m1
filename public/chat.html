@@ -8,23 +8,13 @@
     <style>
         body { background: #628bb4; }
         .chat-container {
-            max-width: 600px;
+            max-width: 680px;
             margin: 40px auto;
             border: 1px solid #0c556d;
             border-radius: 8px;
             background: #191717;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             overflow: hidden;
-        }
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
         }
         .header {
             background: #555d6a;
@@ -43,9 +33,7 @@
             color: white;
             cursor: pointer;
         }
-        .header button:hover {
-            background: #007f67;
-        }
+        .header button:hover { background: #007f67; }
         #messages {
             height: 300px;
             overflow-y: auto;
@@ -73,28 +61,71 @@
             background: transparent;
             cursor: pointer;
         }
-        .emoji-bar button:hover {
-            transform: scale(1.2);
+        .emoji-bar button:hover { transform: scale(1.2); }
+        .admin-panel {
+            display: none;
+            background: #222;
+            border-top: 1px solid #4a4a4a;
+            padding: 12px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .admin-header button {
+            background: #b73f3f;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .admin-messages {
+            max-height: 240px;
+            overflow-y: auto;
+            background: #181818;
+            padding: 10px;
+            border-radius: 6px;
+            color: #eee;
+        }
+        .admin-message {
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+        .admin-system {
+            color: #b9d1ff;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
-
-    <!-- Barre du haut avec bouton Déconnexion -->
     <div class="header">
         <span>💬 Chat WhatsApp</span>
-        <button onclick="logout()">Déconnexion</button>
-    </div> 
+        <div>
+            <button id="adminToggle" onclick="showAdminPanel()" style="display:none; margin-right: 10px;">Admin</button>
+            <button onclick="logout()">Déconnexion</button>
+        </div>
+    </div>
 
     <div id="messages"></div>
 
-    <div class="bottom">
-        <label for="username" class="visually-hidden">Votre nom</label>
-        <input type="text" id="username" class="form-control" placeholder="Votre nom">
+    <div id="adminPanel" class="admin-panel">
+        <div class="admin-header">
+            <span>📋 Interface Admin</span>
+            <button onclick="hideAdminPanel()">Fermer</button>
+        </div>
+        <div id="adminMessages" class="admin-messages"></div>
+    </div>
 
-        <label for="group" class="visually-hidden">Choisir un groupe</label>
+    <div class="bottom">
         <select id="group" class="form-select" aria-label="Choisir un groupe">
             <option value="Groupe1">Groupe 1</option>
             <option value="Groupe2">Groupe 2</option>
@@ -102,18 +133,13 @@
             <option value="Groupe4">Groupe 4</option>
             <option value="Groupe5">Groupe 5</option>
         </select>
-
-        <label for="messageInput" class="visually-hidden">Message</label>
         <input type="text" id="messageInput" class="form-control" placeholder="Message">
-
         <button class="btn btn-success" onclick="sendMessage()">Envoyer</button>
-
-        <label for="fileInput" class="visually-hidden">Sélectionner un fichier</label>
-        <input type="file" id="fileInput" class="form-control" aria-label="Sélectionner un fichier">
+        <button class="btn btn-info" onclick="setDecryptKey()">Clé</button>
+        <input type="file" id="fileInput" class="form-control">
         <button class="btn btn-warning" onclick="uploadFile()">Partager fichier</button>
     </div>
 
-    <!-- Barre d'émojis -->
     <div class="emoji-bar">
         <button onclick="addEmoji('😂')">😂</button>
         <button onclick="addEmoji('❤️')">❤️</button>
@@ -121,18 +147,9 @@
         <button onclick="addEmoji('🔥')">🔥</button>
         <button onclick="addEmoji('🎉')">🎉</button>
     </div>
-
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
-<script>
-function logout() {
-    localStorage.removeItem("username");
-    localStorage.removeItem("pin");
-    window.location = "login.html";
-}
-</script>
-
 </body>
 </html>

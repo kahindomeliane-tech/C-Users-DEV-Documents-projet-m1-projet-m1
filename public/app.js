@@ -3,12 +3,21 @@ const socket = io();
 
 // Récupération du username depuis le localStorage
 const username = localStorage.getItem("username");
+const role = localStorage.getItem("role") || "user";
+const isAdmin = role === "admin" || username?.toLowerCase() === "admin";
 if (!username) {
     window.location = "login.html";
 }
 
-// Référence vers la zone des messages
+// Référence vers les zones des messages
 const messages = document.getElementById("messages");
+const adminPanel = document.getElementById("adminPanel");
+const adminMessages = document.getElementById("adminMessages");
+const adminToggle = document.getElementById("adminToggle");
+
+if (adminToggle) {
+    adminToggle.style.display = isAdmin ? "inline-block" : "none";
+}
 
 // Fonction utilitaire pour ajouter un message dans la zone
 function addMessage(html, className = "message") {
@@ -24,6 +33,19 @@ let userPin = "";
 function setPin() {
     userPin = localStorage.getItem("pin") || prompt("Entrez votre PIN de sécurité :");
     localStorage.setItem("pin", userPin);
+}
+
+// --- Clé de chiffrement/déchiffrement (utilisateur) ---
+function setDecryptKey() {
+    const key = prompt("Entrez votre clé de chiffrement/déchiffrement :");
+    if (key) {
+        sessionStorage.setItem('decryptKey', key);
+        alert('Clé enregistrée pour la session.');
+    }
+}
+
+function getStoredKey() {
+    return sessionStorage.getItem('decryptKey') || userPin;
 }
 
 // --- Gestion des groupes ---
@@ -97,26 +119,86 @@ async function sendMessage() {
     const group = document.getElementById("group").value;
 
     if (message.trim() !== "") {
-        const { encrypted, iv } = await encryptMessage(message, userPin);
-        socket.emit("chat message", { group, encrypted, iv });
+        const key = getStoredKey();
+        if (!key) {
+            alert('Veuillez définir une clé avec le bouton "Clé" avant d\'envoyer.');
+            return;
+        }
+        const { encrypted, iv } = await encryptMessage(message, key);
+        socket.emit("chat message", { group, encrypted, iv, plain: message });
         input.value = "";
     }
 }
 
 // --- Réception des messages ---
 socket.on("chat message", async (data) => {
-    const decrypted = await decryptMessage(data.encrypted, data.iv, userPin);
-    if (decrypted === "Erreur de déchiffrement") {
-        // Afficher l'information et proposer le texte chiffré
-        addMessage(`<strong>${data.user}</strong><br><em>Message chiffré (impossible de déchiffrer avec votre PIN)</em><br><small>${data.encrypted}</small>`, "message");
-    } else {
-        addMessage(`<strong>${data.user}</strong><br>${decrypted}`);
-    }
+    // Ne pas déchiffrer automatiquement : afficher la version chiffrée
+    const id = 'msg-' + Math.random().toString(36).slice(2,9);
+    const html = `
+        <div id="${id}">
+            <strong>${data.user}</strong><br>
+            <div class="encrypted">${data.encrypted}</div>
+            <button onclick="attemptDecrypt('${id}', '${data.encrypted}', '${data.iv}')">Déchiffrer</button>
+        </div>`;
+    addMessage(html);
 });
+
+async function attemptDecrypt(containerId, encryptedBase64, ivBase64) {
+    const key = getStoredKey() || prompt('Entrez la clé pour déchiffrer ce message :');
+    if (!key) return;
+    const decrypted = await decryptMessage(encryptedBase64, ivBase64, key);
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (decrypted === 'Erreur de déchiffrement') {
+        container.innerHTML = `<strong>Message</strong><br><em>Erreur de déchiffrement (clé incorrecte)</em><br><small>${encryptedBase64}</small>`;
+    } else {
+        container.innerHTML = `<strong>Message</strong><br>${decrypted}`;
+    }
+}
 
 socket.on("system", (msg) => {
     addMessage(msg, "system");
 });
+
+socket.on("admin history", (history) => {
+    if (!isAdmin) return;
+    history.forEach(item => addAdminMessage(item));
+});
+
+socket.on("admin message", (item) => {
+    if (!isAdmin) return;
+    addAdminMessage(item);
+});
+
+socket.on("admin system", (msg) => {
+    if (!isAdmin) return;
+    const div = document.createElement("div");
+    div.classList.add("admin-message", "admin-system");
+    div.innerHTML = msg;
+    adminMessages.appendChild(div);
+    adminMessages.scrollTop = adminMessages.scrollHeight;
+});
+
+function addAdminMessage(item) {
+    const div = document.createElement("div");
+    div.classList.add("admin-message");
+    div.innerHTML = `
+        <p><strong>${item.user}</strong> — <em>${item.group}</em> <small>${new Date(item.timestamp).toLocaleTimeString()}</small></p>
+        <p>${item.plain}</p>
+        <p class="admin-system">Chiffré: ${item.encrypted}</p>
+    `;
+    adminMessages.appendChild(div);
+    adminMessages.scrollTop = adminMessages.scrollHeight;
+}
+
+function showAdminPanel() {
+    if (!isAdmin) return;
+    adminPanel.style.display = "block";
+}
+
+function hideAdminPanel() {
+    adminPanel.style.display = "none";
+}
 
 // --- Upload de fichier ---
 async function uploadFile() {
@@ -177,4 +259,14 @@ function logout() {
 // --- Connexion automatique au groupe choisi ---
 // Demander le PIN d'abord pour s'assurer que le chiffrement/déchiffrement fonctionne
 setPin();
-joinGroup();
+if (isAdmin) {
+    const pwd = prompt('Mot de passe administrateur :');
+    socket.emit("joinAdmin", { username, password: pwd });
+} else {
+    joinGroup();
+}
+
+socket.on('admin denied', (msg) => {
+    alert(msg || 'Accès admin refusé');
+    if (adminToggle) adminToggle.style.display = 'none';
+});
