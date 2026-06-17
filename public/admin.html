@@ -6,118 +6,499 @@
     <title>Admin - Mini Chat</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        body { background:#f4f6f8; font-family: Arial, sans-serif; }
-        .wrap { max-width:900px; margin:30px auto; background:#fff; padding:16px; border-radius:8px; }
-        .header { display:flex; justify-content:space-between; align-items:center; }
-        .messages { margin-top:12px; max-height:600px; overflow:auto; background:#fafafa; padding:12px; border-radius:6px; }
-        .msg { padding:8px; border-bottom:1px solid #ececec; }
-        .meta { color:#666; font-size:0.9rem; }
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-alt: #0f172a;
+            --border: rgba(255,255,255,0.12);
+            --text: #f1f5f9;
+            --muted: #cbd5e1;
+            --accent: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --danger: #f87171;
+            --success: #34d399;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            font-family: 'Inter', Arial, sans-serif;
+            color: var(--text);
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at top left, rgba(56,189,248,0.25), transparent 30%),
+                        radial-gradient(circle at bottom right, rgba(14,165,233,0.2), transparent 35%);
+            pointer-events: none;
+        }
+        .layout {
+            width: min(1200px, calc(100% - 32px));
+            margin: 32px auto 48px;
+            display: grid;
+            gap: 24px;
+            position: relative;
+            z-index: 1;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+        .topbar h1 {
+            margin: 0;
+            font-size: clamp(2rem, 2.5vw, 2.6rem);
+            letter-spacing: -0.04em;
+        }
+        .topbar p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            max-width: 720px;
+        }
+        .topbar button {
+            border: none;
+            border-radius: 14px;
+            background: rgba(56,189,248,0.2);
+            color: var(--text);
+            padding: 14px 20px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .topbar button:hover {
+            background: rgba(56,189,248,0.3);
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.98);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 24px;
+        }
+        .login-card {
+            max-width: 420px;
+        }
+        .login-card h2,
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 1.5rem;
+        }
+        .input-group {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+        }
+        .input-group input,
+        .input-group button,
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .input-group input:focus,
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(56,189,248,0.12);
+        }
+        .input-group button,
+        .filter-group button {
+            border: none;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #0f172a;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .input-group button:hover,
+        .filter-group button:hover {
+            filter: brightness(1.1);
+        }
+        .status {
+            margin-top: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+        .status.error { color: var(--danger); }
+        .status.success { color: var(--success); }
+        .dashboard {
+            display: grid;
+            gap: 24px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+        .stat {
+            background: rgba(56,189,248,0.12);
+            border: 1px solid rgba(56,189,248,0.25);
+            border-radius: 22px;
+            padding: 24px;
+        }
+        .stat strong {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        .stat span { color: var(--muted); }
+        .admin-topbar {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+        .admin-topbar h2 { margin: 0; }
+        .filter-group {
+            display: grid;
+            grid-template-columns: 1fr 180px;
+            gap: 14px;
+            align-items: end;
+            margin-top: 14px;
+        }
+        .message-list {
+            display: grid;
+            gap: 16px;
+            max-height: 660px;
+            overflow-y: auto;
+            margin-top: 18px;
+        }
+        .message-card {
+            background: rgba(56,189,248,0.08);
+            border: 1px solid rgba(56,189,248,0.2);
+            border-radius: 22px;
+            padding: 22px;
+            display: grid;
+            gap: 14px;
+        }
+        .message-meta {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .message-meta .author {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 700;
+        }
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(56,189,248,0.25);
+            font-size: 1rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .message-body {
+            display: grid;
+            gap: 12px;
+        }
+        .message-body p {
+            margin: 0;
+            line-height: 1.7;
+        }
+        .message-body .encrypted-text {
+            background: rgba(56,189,248,0.12);
+            border-radius: 16px;
+            padding: 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
+            word-break: break-word;
+            color: var(--accent);
+        }
+        .message-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .message-actions button {
+            border: none;
+            border-radius: 14px;
+            padding: 12px 16px;
+            background: rgba(56,189,248,0.15);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .message-actions button:hover { transform: translateY(-1px); background: rgba(56,189,248,0.25); }
+        .message-actions .danger {
+            background: var(--danger);
+            color: white;
+        }
+        .hidden {
+            display: none !important;
+        }
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .filter-group { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+            .grid-2 { grid-template-columns: 1fr; }
+            .filter-group { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-<div class="admin-wrap">
-    <div class="admin-top">
-        <h2>Admin — mini-²whatsapp messageries</h2>
-        <div class="admin-controls">
-            <input id="search" class="admin-search" placeholder="Rechercher par utilisateur, texte ou groupe...">
-            <select id="filterGroup" class="admin-filter">
-                <option value="">Tous les groupes</option>
-                <option value="Groupe1">Groupe1</option>
-                <option value="Groupe2">Groupe2</option>
-                <option value="Groupe3">Groupe3</option>
-                <option value="Groupe4">Groupe4</option>
-                <option value="Groupe5">Groupe5</option>
-            </select>
-            <button class="btn-ghost" onclick="logout()">Déconnexion</button>
+<div class="layout">
+    <div class="topbar">
+        <div>
+            <h1>Interface administrateur du mini chat </h1>
+            <p>Bienvenue dans le tableau de bord admin. Gère les utilisateurs, visualise les messages et surveille les groupes depuis une page dédiée.</p>
         </div>
+        <button onclick="logout()">Déconnexion</button>
     </div>
 
-    <div id="messages" class="admin-messages"></div>
+    <div class="grid-2">
+        <div class="card login-card" id="adminLoginCard">
+            <h2>Connexion admin</h2>
+            <div class="input-group">
+                <input id="adminUsername" type="text" placeholder="Nom d'utilisateur" value="admin">
+                <input id="adminPassword" type="password" placeholder="Mot de passe" value="admin123">
+                <button onclick="adminLogin()">Se connecter</button>
+            </div>
+            <p class="status" id="loginStatus">Utilise le compte administrateur pour ouvrir le tableau de bord.</p>
+        </div>
 
+        <div class="card dashboard hidden" id="dashboardCard">
+            <div class="admin-topbar">
+                <div>
+                    <h2>Résumé en temps réel</h2>
+                    <p class="status">Messages reçus, utilisateurs actifs et contrôle des groupes.</p>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat">
+                    <strong id="messageCount">0</strong>
+                    Total messages
+                </div>
+                <div class="stat">
+                    <strong id="userCount">0</strong>
+                    Utilisateurs uniques
+                </div>
+                <div class="stat">
+                    <strong id="groupCount">5</strong>
+                    Groupes monitorés
+                </div>
+            </div>
+            <div class="filter-group">
+                <input id="searchInput" type="text" placeholder="Rechercher utilisateur, message ou groupe" oninput="renderMessages()">
+                <select id="filterGroup" onchange="renderMessages()">
+                    <option value="">Tous les groupes</option>
+                    <option value="Groupe1">Groupe1</option>
+                    <option value="Groupe2">Groupe2</option>
+                    <option value="Groupe3">Groupe3</option>
+                    <option value="Groupe4">Groupe4</option>
+                    <option value="Groupe5">Groupe5</option>
+                </select>
+            </div>
+            <div class="message-list" id="messages"></div>
+        </div>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-const me = localStorage.getItem('username');
+const loginCard = document.getElementById('adminLoginCard');
+const dashboardCard = document.getElementById('dashboardCard');
+const loginStatus = document.getElementById('loginStatus');
+const searchInput = document.getElementById('searchInput');
+const filterGroup = document.getElementById('filterGroup');
+const messagesContainer = document.getElementById('messages');
+const messageCount = document.getElementById('messageCount');
+const userCount = document.getElementById('userCount');
+const groupCount = document.getElementById('groupCount');
 
-function logout(){
+let messageHistory = [];
+let connectedUsers = new Set();
+
+function logout() {
     localStorage.removeItem('username');
     localStorage.removeItem('role');
-    window.location='login.html';
-}
-
-const role = localStorage.getItem('role');
-if (role !== 'admin') {
-    alert('Accès admin réservé au compte admin.');
     window.location = 'login.html';
 }
 
-socket.on('connect', ()=>{
-    socket.emit('joinAdmin', { username: me, role });
-});
+function showDashboard() {
+    loginCard.classList.add('hidden');
+    dashboardCard.classList.remove('hidden');
+    loginStatus.classList.remove('error');
+    loginStatus.classList.add('success');
+    loginStatus.textContent = 'Connecté en tant qu’administrateur. Tableau de bord prêt.';
+    if (socket.connected) {
+        socket.emit('joinAdmin', { username: 'admin', role: 'admin' });
+    }
+}
 
-socket.on('admin denied', (msg)=>{
-    alert(msg || 'Accès administrateur refusé');
-    window.location = 'login.html';
-});
+function showLogin() {
+    loginCard.classList.remove('hidden');
+    dashboardCard.classList.add('hidden');
+}
 
-socket.on('admin ok', ()=>{
-    console.log('Accès admin autorisé');
-});
+async function adminLogin() {
+    const username = document.getElementById('adminUsername').value.trim();
+    const password = document.getElementById('adminPassword').value.trim();
 
-function buildCard(m){
-    const el = document.createElement('div');
-    el.className = 'admin-msg';
-    el.innerHTML = `
-        <div class="admin-meta">
-            <div class="avatar">${(m.user||'?').charAt(0).toUpperCase()}</div>
-            <div>
-                <div class="msg-user">${m.user || 'Inconnu'} <span class="msg-group">${m.group || ''}</span></div>
-                <div class="msg-time">${new Date(m.timestamp).toLocaleString()}</div>
+    if (!username || !password) {
+        loginStatus.textContent = 'Complète les deux champs pour te connecter.';
+        loginStatus.classList.add('error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const result = await response.json();
+        if (result.success && result.role === 'admin') {
+            localStorage.setItem('username', 'admin');
+            localStorage.setItem('role', 'admin');
+            showDashboard();
+        } else {
+            loginStatus.textContent = result.message || 'Identifiants administrateur incorrects.';
+            loginStatus.classList.add('error');
+        }
+    } catch (error) {
+        loginStatus.textContent = 'Erreur de connexion au serveur.';
+        loginStatus.classList.add('error');
+    }
+}
+
+function buildCard(item) {
+    const card = document.createElement('div');
+    card.className = 'message-card';
+    card.innerHTML = `
+        <div class="message-meta">
+            <div class="author">
+                <div class="avatar">${(item.user || '?').charAt(0).toUpperCase()}</div>
+                <div>
+                    <div>${item.user || 'Inconnu'}</div>
+                    <div class="status">${item.group || 'Groupe inconnu'}</div>
+                </div>
             </div>
+            <div class="status">${new Date(item.timestamp).toLocaleString()}</div>
         </div>
-        <div class="msg-text">${m.plain ? m.plain : '<em>(pas de texte)</em>'}</div>
-        <div class="msg-encrypted">${m.encrypted}</div>
-        <div class="msg-actions">
-            <button class="btn-primary" onclick="copyEncrypted(this)">Copier chiffré</button>
-            <button class="btn-ghost" onclick="saveLog(this)">Télécharger</button>
-            <button class="btn-ghost" onclick="adminDeleteUser('${m.user}')">Supprimer utilisateur</button>
+        <div class="message-body">
+            <p>${item.plain ? item.plain : '<em>(pas de texte)</em>'}</p>
+            <div class="encrypted-text">${item.encrypted}</div>
+        </div>
+        <div class="message-actions">
+            <button onclick="copyEncrypted(this)">Copier chiffré</button>
+            <button onclick="saveLog(this)">Télécharger</button>
+            <button class="danger" onclick="adminDeleteUser('${item.user}')">Supprimer utilisateur</button>
         </div>
     `;
-    return el;
+    return card;
 }
 
-function addMessage(m){
-    const container = document.getElementById('messages');
-    container.prepend(buildCard(m));
+function renderMessages() {
+    messagesContainer.innerHTML = '';
+    const query = searchInput.value.trim().toLowerCase();
+    const selectedGroup = filterGroup.value;
+
+    const filtered = messageHistory.filter(item => {
+        const groupMatch = !selectedGroup || item.group === selectedGroup;
+        const searchMatch = [item.user, item.group, item.plain, item.encrypted]
+            .filter(Boolean)
+            .some(value => value.toLowerCase().includes(query));
+        return groupMatch && searchMatch;
+    });
+
+    filtered.slice().reverse().forEach(item => messagesContainer.appendChild(buildCard(item)));
 }
 
-socket.on('admin history', (history)=>{ history.slice(-200).forEach(addMessage); });
-socket.on('admin message', (m)=> addMessage(m));
-socket.on('admin system', (s)=>{ const el=document.createElement('div'); el.className='admin-msg'; el.innerHTML=`<em>${s}</em>`; document.getElementById('messages').prepend(el); });
-
-function copyEncrypted(btn){
-    const card = btn.closest('.admin-msg');
-    const txt = card.querySelector('.msg-encrypted').innerText;
-    navigator.clipboard.writeText(txt);
-    btn.innerText = 'Copié'; setTimeout(()=> btn.innerText='Copier chiffré',1200);
+function addMessage(item) {
+    if (!item) return;
+    messageHistory.push(item);
+    if (item.user) connectedUsers.add(item.user);
+    messageCount.textContent = messageHistory.length;
+    userCount.textContent = connectedUsers.size;
+    renderMessages();
 }
 
-function saveLog(btn){
-    const card = btn.closest('.admin-msg');
-    const txt = card.querySelector('.msg-text').innerText + '\n\nChiffré:\n' + card.querySelector('.msg-encrypted').innerText;
-    const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+function copyEncrypted(btn) {
+    const card = btn.closest('.message-card');
+    const text = card.querySelector('.encrypted-text').innerText;
+    navigator.clipboard.writeText(text);
+    btn.textContent = 'Copié';
+    setTimeout(() => btn.textContent = 'Copier chiffré', 1200);
+}
+
+function saveLog(btn) {
+    const card = btn.closest('.message-card');
+    const text = card.querySelector('.message-body p').innerText + '\n\nChiffré:\n' + card.querySelector('.encrypted-text').innerText;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'message.txt'; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'message.txt';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
-function adminDeleteUser(username){
+function adminDeleteUser(username) {
     if (!username) return alert('Nom utilisateur manquant');
     if (!confirm(`Confirmer suppression de l'utilisateur ${username} ?`)) return;
     socket.emit('admin delete user', username);
 }
 
+socket.on('connect', () => {
+    const storedRole = localStorage.getItem('role');
+    const storedUser = localStorage.getItem('username');
+    if (storedRole === 'admin' && storedUser === 'admin') {
+        showDashboard();
+    } else {
+        showLogin();
+    }
+});
+
+socket.on('admin ok', () => {
+    console.log('Accès admin autorisé');
+});
+
+socket.on('admin denied', (msg) => {
+    loginStatus.textContent = msg || 'Accès administrateur refusé.';
+    loginStatus.classList.add('error');
+    showLogin();
+});
+
+socket.on('admin history', (history) => {
+    if (!Array.isArray(history)) return;
+    messageHistory = history.slice(-200);
+    connectedUsers = new Set(messageHistory.map(item => item.user || 'Inconnu'));
+    messageCount.textContent = messageHistory.length;
+    userCount.textContent = connectedUsers.size;
+    renderMessages();
+});
+
+socket.on('admin message', item => addMessage(item));
+
+socket.on('admin system', text => {
+    const el = document.createElement('div');
+    el.className = 'message-card';
+    el.innerHTML = `<div class="message-body"><p><em>${text}</em></p></div>`;
+    messagesContainer.prepend(el);
+});
 </script>
 </body>
 </html>
