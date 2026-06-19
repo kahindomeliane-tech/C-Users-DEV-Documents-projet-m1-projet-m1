@@ -270,3 +270,16 @@ socket.on('admin denied', (msg) => {
     alert(msg || 'Accès admin refusé');
     if (adminToggle) adminToggle.style.display = 'none';
 });
+
+socket.on("admin file", (data) => {
+    const id = 'admin-file-' + Math.random().toString(36).slice(2,9);
+    const html = `
+        <div id="${id}" class="admin-message">
+            <strong>${data.user}</strong><br>
+            📁 ${data.filename}<br>${data.note}
+            <button onclick="decryptFile('${data.ciphertext}', ${JSON.stringify(data.iv)}, getStoredKey(), '${data.filename}')">
+                Déchiffrer fichier
+            </button>
+        </div>`;
+    document.getElementById("adminMessages").innerHTML += html;
+});

@@ -254,7 +254,16 @@
             .grid-2 { grid-template-columns: 1fr; }
             .filter-group { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr; }
-        }
+            @media (max-width: 600px) {
+                .topbar {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                .topbar button {
+                    align-self: stretch;
+                    text-align: center;
+                }
+            }
     </style>
 </head>
 <body>
