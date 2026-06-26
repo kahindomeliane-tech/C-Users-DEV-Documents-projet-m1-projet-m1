@@ -17,7 +17,7 @@ app.use(express.static("public"));
 
 // --- Variables sensibles (⚠️ à mettre dans Render → Environment Variables)
 const JWT_SECRET = process.env.JWT_SECRET || "fallbackSecret";
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/PROJETM1";
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://Meliane:Meliane@cluster0.ypyn4v4.mongodb.net/PROJETM1?retryWrites=true&w=majority";
 
 // --- Connexion MongoDB Atlas ---
 mongoose.connect(MONGO_URI)
