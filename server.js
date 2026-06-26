@@ -4,179 +4,155 @@ const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
 const path = require("path");
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
-
-// Rediriger la racine vers la page de connexion pour forcer l'authentification
-app.get("/", (req, res) => {
-    res.redirect("/login.html");
-});
-app.get("/index.html", (req, res) => {
-    res.redirect("/login.html");
-});
-
-// Servir les fichiers statiques (HTML, CSS, JS)
 app.use(express.static("public"));
 
-const upload = multer({ dest: "uploads/" });
+// --- Variables sensibles (⚠️ normalement dans .env)
+const JWT_SECRET = "MaSuperCleSecrete123!";
+// --- Variables sensibles (⚠️ normalement dans .env)
 
-const DEFAULT_ADMIN = { username: "admin", password: "admin123", isAdmin: true };
-let users = [DEFAULT_ADMIN];
-let filesDB = {};
-let adminSockets = new Set();
-let allMessages = [];
+const MONGO_URI = "mongodb+srv://Meliane:Meliane@cluster0.ypyn4v4.mongodb.net/PROJETM1?retryWrites=true&w=majority";
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("✅ MongoDB connecté"))
+  .catch(err => console.error("❌ Erreur MongoDB:", err));
 
-// --- Authentification ---
-app.post("/register", (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.json({ success: false, message: "Nom et mot de passe requis" });
-    }
-    if (username.toLowerCase() === "admin") {
-        return res.json({ success: false, message: "Nom réservé, choisissez un autre nom" });
-    }
-    const exist = users.find(u => u.username === username);
-    if (exist) {
-        return res.json({ success: false, message: "Utilisateur existe déjà" });
-    }
-    const passwordTaken = users.find(u => u.password === password);
-    if (passwordTaken) {
-        return res.json({ success: false, message: "Ce mot de passe est déjà utilisé. Choisissez un mot de passe unique." });
-    }
-    users.push({ username, password });
-    res.json({ success: true });
+
+
+// --- Connexion MongoDB Atlas ---&
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("✅ MongoDB connecté"))
+  .catch(err => console.error("Erreur MongoDB:", err));
+
+// --- Schémas Mongoose ---
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  isAdmin: { type: Boolean, default: false }
 });
 
-app.post("/login", (req, res) => {
-    const { username, password } = req.body;
-    const user = users.find(u => u.username === username && u.password === password);
-    if (!user) {
-        return res.json({ success: false, message: "Identifiants incorrects" });
-    }
-    const role = user.isAdmin ? "admin" : "user";
-    res.json({ success: true, username, role });
+// Hachage du mot de passe avant sauvegarde
+userSchema.pre("save", async function(next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
 });
+const User = mongoose.model("User", userSchema);
 
-// --- Upload ---
-app.post("/upload", upload.single("file"), (req, res) => {
-    const file = req.file;
-    const fakeHash = file.originalname + "_" + file.size;
-    if (!filesDB[fakeHash]) {
-        filesDB[fakeHash] = { firstUploader: req.body.username };
-    }
-    res.json({
-        success: true,
-        fileName: file.originalname,
-        firstUploader: filesDB[fakeHash].firstUploader
-    });
+const fileSchema = new mongoose.Schema({
+  fileName: String,
+  firstUploader: String,
+  size: Number,
+  createdAt: { type: Date, default: Date.now }
 });
+const File = mongoose.model("File", fileSchema);
 
-// --- Chat avec 5 groupes ---
-io.on("connection", (socket) => {
-    socket.on("joinGroup", ({ username, group }) => {
-        socket.username = username;
-        socket.group = group;
-        socket.join(group);
-        const systemMessage = `${username} a rejoint ${group}`;
-        io.to(group).emit("system", systemMessage);
-        adminSockets.forEach(adminSocket => adminSocket.emit("admin system", systemMessage));
-    });
-
-    socket.on("joinAdmin", ({ username, role } = {}) => {
-        if (!username || username.toLowerCase() !== 'admin' || role !== 'admin') {
-            socket.emit('admin denied', 'Accès administrateur refusé');
-            return;
-        }
-
-        socket.username = 'admin';
-        socket.isAdmin = true;
-        adminSockets.add(socket);
-        socket.join('admin');
-        socket.emit("admin history", allMessages);
-        socket.emit('admin ok', 'Accès admin autorisé');
-    });
-
-    // Admin actions
-    socket.on('admin delete user', (targetUsername) => {
-        if (!socket.isAdmin) return socket.emit('admin denied', 'Action non autorisée');
-        if (!targetUsername) return;
-        // remove from users DB
-        users = users.filter(u => u.username !== targetUsername && u.username !== undefined);
-
-        // disconnect any sockets with that username
-        for (const [id, s] of io.of('/').sockets) {
-            try {
-                if (s.username && s.username === targetUsername) {
-                    s.emit('system', `Vous avez été supprimé par l'administrateur.`);
-                    s.disconnect(true);
-                }
-            } catch (err) { /* ignore */ }
-        }
-
-        const sys = `Administrateur a supprimé l'utilisateur ${targetUsername}`;
-        io.emit('system', sys);
-        adminSockets.forEach(as => as.emit('admin system', sys));
-    });
-
-    // ⚠️ Le serveur ne chiffre pas, il relaie simplement
-    socket.on("chat message", ({ group, encrypted, iv, plain }) => {
-        const chatPayload = {
-            user: socket.username || "Invité",
-            group,
-            encrypted,
-            iv,
-            plain: plain || "(message non disponible)",
-            timestamp: new Date().toISOString()
-        };
-
-        allMessages.push(chatPayload);
-        io.to(group).emit("chat message", { user: socket.username, encrypted, iv });
-        adminSockets.forEach(adminSocket => adminSocket.emit("admin message", chatPayload));
-    });
-
-    socket.on("disconnect", () => {
-        if (socket.isAdmin) {
-            adminSockets.delete(socket);
-        }
-
-        if (socket.username && socket.group) {
-            const message = `${socket.username} a quitté ${socket.group}`;
-            io.to(socket.group).emit("system", message);
-            adminSockets.forEach(adminSocket => adminSocket.emit("admin system", message));
-        }
-    });
+const messageSchema = new mongoose.Schema({
+  senderId: String,
+  recipientId: String,
+  encryptedContent: String,
+  iv: String,
+  authTag: String,
+  timestamp: { type: Date, default: Date.now },
+  status: { type: String, enum: ["sent", "received", "read"], default: "sent" }
 });
+const Message = mongoose.model("Message", messageSchema);
 
-// Écoute du serveur avec tentative sur un port alternatif si 3000 est occupé
-const DEFAULT_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-function listenWithRetry(startPort, maxAttempts = 5) {
-    let port = startPort;
-    let attempts = 0;
+// --- Middleware JWT ---
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Token manquant" });
 
-    function tryListen() {
-        server.listen(port, () => {
-            console.log(`Serveur lancé sur http://localhost:${port}`);
-        });
-
-        server.on('error', (err) => {
-            if (err.code === 'EADDRINUSE' && attempts < maxAttempts) {
-                console.warn(`Port ${port} occupé, tentative sur ${port + 1}...`);
-                attempts++;
-                port++;
-                server.removeAllListeners('error');
-                tryListen();
-            } else {
-                console.error('Erreur serveur:', err);
-                process.exit(1);
-            }
-        });
-    }
-
-    tryListen();
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ message: "Token invalide" });
+    req.user = user;
+    next();
+  });
 }
 
-listenWithRetry(DEFAULT_PORT);
+// --- Routes ---
+app.get("/", (req, res) => res.redirect("/login.html"));
+
+// Upload (protégé par JWT)
+const upload = multer({ dest: "uploads/" });
+app.post("/upload", authenticateToken, upload.single("file"), async (req, res) => {
+  const file = req.file;
+  let existing = await File.findOne({ fileName: file.originalname, size: file.size });
+  if (!existing) {
+    existing = new File({ fileName: file.originalname, size: file.size, firstUploader: req.user.username });
+    await existing.save();
+  }
+  res.json({ success: true, fileName: file.originalname, firstUploader: existing.firstUploader });
+});
+
+// Register
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.json({ success: false, message: "Nom et mot de passe requis" });
+  }
+
+  const exist = await User.findOne({ username });
+  if (exist) {
+    return res.json({ success: false, message: "Utilisateur existe déjà" });
+  }
+
+  const user = new User({ username, password });
+  await user.save();
+
+  res.json({ success: true });
+});
+
+
+// Login avec JWT
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (!user) return res.json({ success: false, message: "Utilisateur introuvable" });
+
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) return res.json({ success: false, message: "Mot de passe incorrect" });
+
+  const token = jwt.sign(
+    { id: user._id, username: user.username, role: user.isAdmin ? "admin" : "user" },
+    JWT_SECRET,
+    { expiresIn: "24h" }
+  );
+
+  res.json({ success: true, token, role: user.isAdmin ? "admin" : "user" });
+});
+
+// --- Chat avec Socket.IO ---
+io.on("connection", (socket) => {
+  console.log("🔗 Un utilisateur est connecté");
+
+  socket.on("chat message", async (msg) => {
+    io.emit("chat message", msg);
+    const newMsg = new Message({
+      senderId: socket.username || "Invité",
+      recipientId: "global",
+      encryptedContent: msg,
+      timestamp: new Date()
+    });
+    await newMsg.save();
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ Utilisateur déconnecté");
+  });
+});
+
+// --- Définition du port ---
+const PORT = process.env.PORT || 3000;
+
+// --- Serveur ---
+server.listen(PORT, () => {
+  console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
+});
