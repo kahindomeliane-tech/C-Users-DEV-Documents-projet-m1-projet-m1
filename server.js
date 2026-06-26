@@ -15,21 +15,14 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static("public"));
 
-// --- Variables sensibles (⚠️ normalement dans .env)
-const JWT_SECRET = "MaSuperCleSecrete123!";
-// --- Variables sensibles (⚠️ normalement dans .env)
+// --- Variables sensibles (⚠️ à mettre dans Render → Environment Variables)
+const JWT_SECRET = process.env.JWT_SECRET || "fallbackSecret";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/PROJETM1";
 
-const MONGO_URI = "mongodb+srv://Meliane:Meliane@cluster0.ypyn4v4.mongodb.net/PROJETM1?retryWrites=true&w=majority";
+// --- Connexion MongoDB Atlas ---
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connecté"))
   .catch(err => console.error("❌ Erreur MongoDB:", err));
-
-
-
-// --- Connexion MongoDB Atlas ---&
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB connecté"))
-  .catch(err => console.error("Erreur MongoDB:", err));
 
 // --- Schémas Mongoose ---
 const userSchema = new mongoose.Schema({
@@ -38,9 +31,9 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false }
 });
 
-// Hachage du mot de passe avant sauvegarde
-userSchema.pre("save", async function(next) {
-  if (!this.isModified("password")) return next();
+// Hachage du mot de passe avant sauvegarde (version moderne)
+userSchema.pre("save", async function() {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 12);
 });
 const User = mongoose.model("User", userSchema);
@@ -109,7 +102,6 @@ app.post("/register", async (req, res) => {
 
   res.json({ success: true });
 });
-
 
 // Login avec JWT
 app.post("/login", async (req, res) => {
